@@ -1,0 +1,117 @@
+{
+  "name": "Chat Agent - Atendimento Automatizado",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-agent-atendimento",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-receber-mensagem",
+      "name": "Webhook - Receber Mensagem",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "chat-agent-atendimento"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\n\nconst nome = body.nome || '';\nconst email = body.email || '';\nconst mensagem = body.mensagem || '';\n\nif (!nome || !email || !mensagem) {\n  return [{\n    json: {\n      valido: false,\n      erro: 'Campos obrigatórios ausentes. Envie nome, email e mensagem.',\n      nome,\n      email,\n      mensagem\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    valido: true,\n    nome,\n    email,\n    mensagem: mensagem.toLowerCase(),\n    mensagemOriginal: mensagem\n  }\n}];"
+      },
+      "id": "validar-dados",
+      "name": "Validar Dados Recebidos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\n\nif (!item.valido) {\n  return [{ json: item }];\n}\n\nconst msg = item.mensagem;\nlet categoria = 'duvida_geral';\nlet prioridade = 'normal';\n\nif (msg.includes('agendar') || msg.includes('agenda') || msg.includes('horário') || msg.includes('horario')) {\n  categoria = 'agendamento';\n  prioridade = 'alta';\n}\n\nif (msg.includes('suporte') || msg.includes('erro') || msg.includes('problema') || msg.includes('bug')) {\n  categoria = 'suporte';\n  prioridade = 'alta';\n}\n\nif (msg.includes('orçamento') || msg.includes('orcamento') || msg.includes('valor') || msg.includes('preço') || msg.includes('preco')) {\n  categoria = 'orcamento';\n  prioridade = 'media';\n}\n\nreturn [{\n  json: {\n    ...item,\n    categoria,\n    prioridade\n  }\n}];"
+      },
+      "id": "classificar-intencao",
+      "name": "Classificar Intenção",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\n\nif (!item.valido) {\n  return [{\n    json: {\n      status: 'error',\n      resposta: item.erro\n    }\n  }];\n}\n\nlet resposta = '';\n\nswitch (item.categoria) {\n  case 'agendamento':\n    resposta = `Olá ${item.nome}! Recebemos sua solicitação de agendamento. Nossa equipe retornará com os horários disponíveis.`;\n    break;\n  case 'suporte':\n    resposta = `Olá ${item.nome}! Recebemos sua solicitação de suporte. Vamos analisar o problema informado e retornar com uma orientação.`;\n    break;\n  case 'orcamento':\n    resposta = `Olá ${item.nome}! Recebemos seu pedido de orçamento. Em breve enviaremos mais informações sobre valores e disponibilidade.`;\n    break;\n  default:\n    resposta = `Olá ${item.nome}! Recebemos sua mensagem e retornaremos em breve com mais detalhes.`;\n}\n\nreturn [{\n  json: {\n    status: 'success',\n    nome: item.nome,\n    email: item.email,\n    categoria: item.categoria,\n    prioridade: item.prioridade,\n    mensagemRecebida: item.mensagemOriginal,\n    resposta,\n    dataAtendimento: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "gerar-resposta",
+      "name": "Gerar Resposta Automática",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Receber Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Validar Dados Recebidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Dados Recebidos": {
+      "main": [
+        [
+          {
+            "node": "Classificar Intenção",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classificar Intenção": {
+      "main": [
+        [
+          {
+            "node": "Gerar Resposta Automática",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "chat-agent-atendimento",
+  "tags": [
+    {
+      "name": "chatbot"
+    },
+    {
+      "name": "atendimento"
+    },
+    {
+      "name": "portfolio"
+    }
+  ]
+}
